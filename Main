@@ -1,0 +1,231 @@
+  // Essa é a versão 2 do código  
+
+import java.util.PriorityQueue;
+
+public class Fila {
+    private final int servidores;
+    private final int capacidade;
+    private final double minArrival;
+    private final double maxArrival;
+    private final double minService;
+    private final double maxService;
+    private int clientes;
+    private int perdas;
+    private double[] tempos;
+    private double ultimoTempo;
+
+    public Fila(int servidores, int capacidade, double minArrival, double maxArrival, double minService, double maxService) {
+        this.servidores = servidores;
+        this.capacidade = capacidade;
+        this.minArrival = minArrival;
+        this.maxArrival = maxArrival;
+        this.minService = minService;
+        this.maxService = maxService;
+        this.clientes = 0;
+        this.perdas = 0;
+        this.tempos = new double[capacidade + 1];
+        this.ultimoTempo = 0.0;
+    }
+
+    public int getStatus() {
+        return clientes;
+    }
+
+    public int getCapacity() {
+        return capacidade;
+    }
+
+    public int getServidores() {
+        return servidores;
+    }
+
+    public double getMinArrival() {
+        return minArrival;
+    }
+
+    public double getMaxArrival() {
+        return maxArrival;
+    }
+
+    public double getMinService() {
+        return minService;
+    }
+
+    public double getMaxService() {
+        return maxService;
+    }
+
+    public void in() {
+        clientes++;
+    }
+
+    public void out() {
+        clientes--;
+    }
+
+    public void loss() {
+        perdas++;
+    }
+
+    public void acumulaTempo(double tempoAtual) {
+        int estado = Math.min(clientes, capacidade);
+        tempos[estado] += (tempoAtual - ultimoTempo);
+        ultimoTempo = tempoAtual;
+    }
+
+    public void imprimirResultados() {
+        double totalTempo = 0.0;
+        for (double t : tempos) {
+            totalTempo += t;
+        }
+        for (int i = 0; i < tempos.length; i++) {
+            System.out.printf("Estado %d: %.2f (%.2f%%)%n", i, tempos[i], (tempos[i] / totalTempo) * 100);
+        }
+        System.out.printf("Clientes perdidos: %d%n", perdas);
+    }
+}
+
+public class Evento implements Comparable<Evento> {
+    public static final int CHEGADA = 0;
+    public static final int SAIDA = 1;
+    public static final int PASSAGEM = 2;
+
+    private final int tipo;
+    private final double tempo;
+
+    public Evento(int tipo, double tempo) {
+        this.tipo = tipo;
+        this.tempo = tempo;
+    }
+
+    public int getTipo() {
+        return tipo;
+    }
+
+    public double getTempo() {
+        return tempo;
+    }
+
+    @Override
+    public int compareTo(Evento outro) {
+        return Double.compare(this.tempo, outro.tempo);
+    }
+}
+
+public class GeradorDeNumerosAleatorios {
+    private long anterior;
+    private final long a;
+    private final long c;
+    private final long M;
+
+    public GeradorDeNumerosAleatorios(long semente, long a, long c, long M) {
+        this.anterior = semente;
+        this.a = a;
+        this.c = c;
+        this.M = M;
+    }
+
+    public double proximoAleatorio() {
+        anterior = (a * anterior + c) % M;
+        return (double) anterior / M;
+    }
+}
+
+public class SimuladorDeFila {
+    private final Fila fila1;
+    private final Fila fila2;
+    private final GeradorDeNumerosAleatorios rng;
+    private final PriorityQueue<Evento> escalonador;
+    private double tempo;
+    private static final int CONTADOR_EVENTOS = 100000;
+
+    public SimuladorDeFila(Fila fila1, Fila fila2, long semente) {
+        this.fila1 = fila1;
+        this.fila2 = fila2;
+        this.rng = new GeradorDeNumerosAleatorios(semente, 1103515245L, 12345L, (1L << 31));
+        this.escalonador = new PriorityQueue<>();
+        this.tempo = 0.0;
+    }
+
+    private double gerarTempo(double min, double max) {
+        return rng.proximoAleatorio() * (max - min) + min;
+    }
+
+    private void processarChegada(Fila fila) {
+        double chegada = gerarTempo(fila.getMinArrival(), fila.getMaxArrival());
+        tempo += chegada;
+        if (fila.getStatus() < fila.getCapacity()) {
+            fila.in();
+            escalonador.add(new Evento(Evento.SAIDA, tempo + gerarTempo(fila.getMinService(), fila.getMaxService())));
+        } else {
+            fila.loss();
+        }
+    }
+
+    private void processarSaida(Fila fila) {
+        if (fila.getStatus() > 0) {
+            tempo += gerarTempo(fila.getMinService(), fila.getMaxService());
+            fila.out();
+            if (fila == fila1) {
+                processarChegada(fila2);
+            }
+        }
+    }
+
+    private void acumulaTempo() {
+        fila1.acumulaTempo(tempo);
+        fila2.acumulaTempo(tempo);
+    }
+
+    public void simular() {
+        // Inicializa a primeira chegada
+        escalonador.add(new Evento(Evento.CHEGADA, 0));
+
+        int contador = CONTADOR_EVENTOS;
+
+        while (contador > 0) {
+            Evento evento = escalonador.poll();
+            if (evento == null) break;
+
+            tempo = evento.getTempo();
+
+            switch (evento.getTipo()) {
+                case Evento.CHEGADA:
+                    processarChegada(fila1);
+                    break;
+                case Evento.SAIDA:
+                    processarSaida(fila1);
+                    break;
+                case Evento.PASSAGEM:
+                    processarChegada(fila2);
+                    break;
+                default:
+                    break;
+            }
+
+            acumulaTempo();
+            contador--;
+        }
+
+        // Imprimir resultados para fila1
+        System.out.println("Resultados para Fila 1:");
+        fila1.imprimirResultados();
+
+        // Imprimir resultados para fila2
+        System.out.println("Resultados para Fila 2:");
+        fila2.imprimirResultados();
+
+        // Recomendações
+        System.out.println("Recomendações:");
+        System.out.println("G/G/2/3, chegadas entre 1..4, atendimento entre 3..4:");
+        System.out.println("G/G/1/5, atendimento entre 2..3:");
+    }
+
+    public static void main(String[] args) {
+        // Configurações para simulação
+        Fila fila1 = new Fila(1, 5, 2, 5, 3, 5);
+        Fila fila2 = new Fila(1, 5, 2, 5, 3, 5);
+        SimuladorDeFila simulador = new SimuladorDeFila(fila1, fila2, 12345);
+        simulador.simular();
+    }
+}
