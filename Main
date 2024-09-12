@@ -1,4 +1,4 @@
-  // Essa é a versão 2 do código  
+  // Essa é a versão 2 do código   - não aproveitei o da semana anterior porque tava dando erro e não achei o erro, ai refiz 
 
 import java.util.PriorityQueue;
 
@@ -152,7 +152,7 @@ public class SimuladorDeFila {
     }
 
     private void processarChegada(Fila fila) {
-        double chegada = gerarTempo(fila.getMinArrival(), fila.getMaxArrival());
+        double chegada = gerarTempo(fila.getMinArrival(), fila.getMaxArrival());   // VERIFICA A PRIVATE ANTES DE ENTREGAR O ARQUIVO PORQUE NÃO TAVA PUXANDO 
         tempo += chegada;
         if (fila.getStatus() < fila.getCapacity()) {
             fila.in();
@@ -215,9 +215,9 @@ public class SimuladorDeFila {
         System.out.println("Resultados para Fila 2:");
         fila2.imprimirResultados();
 
-        // Recomendações
+        // REVER ISSO AQUI -------------
         System.out.println("Recomendações:");
-        System.out.println("G/G/2/3, chegadas entre 1..4, atendimento entre 3..4:");
+        System.out.println("G/G/2/3, chegadas entre 1..4, atendimento entre 3..4:");  
         System.out.println("G/G/1/5, atendimento entre 2..3:");
     }
 
